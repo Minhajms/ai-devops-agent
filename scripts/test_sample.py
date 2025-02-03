@@ -1,5 +1,5 @@
 import pytest
-
+import nonexistent_module 
 def test_example():
     assert 1 == 1
 
