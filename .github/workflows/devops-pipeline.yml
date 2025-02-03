@@ -23,10 +23,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          
+
       - name: Run tests
         run: |
-          pytest | tee build_log.txt
+          pytest -n auto | tee build_log.txt
 
       - name: Check for dependency issues
         id: dependency_check
@@ -42,15 +42,15 @@ jobs:
       - name: Fix dependencies and retry
         if: env.retry == 'true'
         run: |
-          python self_heal.py
+          python scripts/self_heal.py
 
       - name: Train model
         run: |
-          python train_model.py
+          python scripts/train_model.py
 
       - name: Notify Slack
         if: failure()
         env:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
         run: |
-          python notify_slack.py
+          python scripts/notify_slack.py
