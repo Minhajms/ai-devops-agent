@@ -26,7 +26,23 @@ jobs:
           
       - name: Run tests
         run: |
-          pytest
+          pytest | tee build_log.txt
+
+      - name: Check for dependency issues
+        id: dependency_check
+        run: |
+          if grep "ModuleNotFoundError" build_log.txt; then
+            echo "Dependency issue detected"
+            echo "retry=true" >> $GITHUB_ENV
+          else
+            echo "No dependency issues"
+            echo "retry=false" >> $GITHUB_ENV
+          fi
+
+      - name: Fix dependencies and retry
+        if: env.retry == 'true'
+        run: |
+          python self_heal.py
 
       - name: Train model
         run: |
