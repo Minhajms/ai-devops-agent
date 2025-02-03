@@ -1,0 +1,6 @@
+pytest
+pytest-xdist
+slack-sdk
+scikit-learn
+pandas
+joblib
