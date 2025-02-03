@@ -47,3 +47,10 @@ jobs:
       - name: Train model
         run: |
           python train_model.py
+
+      - name: Notify Slack
+        if: failure()
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+        run: |
+          python notify_slack.py
