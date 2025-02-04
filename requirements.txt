@@ -4,3 +4,7 @@ slack-sdk
 scikit-learn
 pandas
 joblib
+psutil
+bandit
+safety
+numpy

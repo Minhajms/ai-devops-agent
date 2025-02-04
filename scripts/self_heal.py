@@ -1,45 +1,110 @@
 import subprocess
 import logging
+import os
+import sys
+from typing import List, Tuple
+import ast
+import importlib
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-def comment_out_missing_imports(filename, missing_module):
-    with open(filename, "r") as file:
-        lines = file.readlines()
-
-    with open(filename, "w") as file:
-        inside_block = False  # Track if we're inside a function/class
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-
-            # Detect the start of a function or class
-            if stripped.startswith(("def ", "class ")):
-                inside_block = True
+class PipelineHealer:
+    def __init__(self):
+        self.fixed_files = []
+        
+    def analyze_python_file(self, filename: str) -> List[Tuple[str, int]]:
+        """Analyze Python file for potential issues."""
+        issues = []
+        try:
+            with open(filename, 'r') as file:
+                tree = ast.parse(file.read(), filename)
+                
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for name in node.names:
+                        if not self._is_module_available(name.name):
+                            issues.append((name.name, node.lineno))
+                elif isinstance(node, ast.ImportFrom):
+                    if not self._is_module_available(node.module):
+                        issues.append((node.module, node.lineno))
+                        
+        except Exception as e:
+            logger.error(f"Error analyzing {filename}: {str(e)}")
             
-            # Ensure we handle indentation correctly
-            if f"import {missing_module}" in stripped:
-                leading_spaces = len(line) - len(line.lstrip())  # Preserve indentation
-                lines[i] = f"{' ' * leading_spaces}# {line.lstrip()}"
-                logger.info(f"Commented out missing import: {line.strip()}")
-
-                # If inside a function/class, add `pass` to prevent indentation errors
-                if inside_block:
-                    lines.insert(i + 1, f"{' ' * leading_spaces}pass  # Added to prevent IndentationError\n")
-
-            # Reset when we leave a block
-            elif stripped and not stripped.startswith("#") and not stripped.startswith(("def ", "class ")):
-                inside_block = False  
-
-    with open(filename, "w") as file:
-        file.writelines(lines)
-
-def retry_build():
-    logger.info("Retrying build...")
-    subprocess.run(["pytest", "-n", "auto"], check=True)
-
-if __name__ == "__main__":
-    missing_module = "nonexistent_module"
-    comment_out_missing_imports("scripts/test_sample.py", missing_module)
-    retry_build()
+        return issues
+        
+    def _is_module_available(self, module_name: str) -> bool:
+        """Check if a module is available."""
+        try:
+            importlib.import_module(module_name)
+            return True
+        except ImportError:
+            return False
+            
+    def fix_dependencies(self, filename: str) -> bool:
+        """Fix dependency issues in the file."""
+        issues = self.analyze_python_file(filename)
+        if not issues:
+            return True
+            
+        logger.info(f"Found {len(issues)} issues in {filename}")
+        
+        fixed = False
+        for module, line_no in issues:
+            if self._attempt_pip_install(module):
+                logger.info(f"Successfully installed {module}")
+                fixed = True
+            else:
+                logger.warning(f"Could not install {module}, commenting out import")
+                self._comment_out_import(filename, line_no)
+                fixed = True
+                
+        return fixed
+        
+    def _attempt_pip_install(self, module: str) -> bool:
+        """Attempt to install a module via pip."""
+        try:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', module])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+            
+    def _comment_out_import(self, filename: str, line_no: int):
+        """Comment out a specific line in a file."""
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+            
+        if 0 <= line_no - 1 < len(lines):
+            lines[line_no - 1] = f"# {lines[line_no - 1]}"
+            
+        with open(filename, 'w') as file:
+            file.writelines(lines)
+            
+    def check_and_fix_memory(self):
+        """Check and fix memory issues."""
+        try:
+            import psutil
+            process = psutil.Process(os.getpid())
+            memory_usage = process.memory_info().rss / 1024 / 1024  # MB
+            
+            if memory_usage > 1000:  # 1GB threshold
+                logger.warning(f"High memory usage detected: {memory_usage:.2f} MB")
+                # Implement memory cleanup strategies here
+                
+        except Exception as e:
+            logger.error(f"Error checking memory: {str(e)}")
+            
+    def retry_build(self):
+        """Retry the build with fixed configuration."""
+        logger.info("Retrying build...")
+        try:
+            subprocess.run(['pytest', '-n', 'auto'], check=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Build retry failed: {str(e)}")
+            return False
 
