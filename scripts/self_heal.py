@@ -11,7 +11,8 @@ def comment_out_missing_imports(filename, missing_module):
     with open(filename, "w") as file:
         for line in lines:
             if f"import {missing_module}" in line:
-                file.write(f"# {line.strip()}\npass  # Placeholder to avoid IndentationError\n")
+                leading_spaces = len(line) - len(line.lstrip())  # Preserve indentation
+                file.write(f"{' ' * leading_spaces}# {line.lstrip()}")
                 logger.info(f"Commented out missing import: {line.strip()}")
             else:
                 file.write(line)
