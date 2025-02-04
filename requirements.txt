@@ -1,3 +1,5 @@
+bandit
+safety
 pytest
 pytest-xdist
 slack-sdk
@@ -5,6 +7,5 @@ scikit-learn
 pandas
 joblib
 psutil
-bandit
-safety
 numpy
+
