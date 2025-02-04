@@ -43,6 +43,7 @@ jobs:
         if: env.retry == 'true'
         run: |
           python scripts/self_heal.py
+          pytest -n auto | tee build_log.txt
 
       - name: Train model
         run: |
@@ -61,4 +62,3 @@ jobs:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
         run: |
           python scripts/notify_slack.py "✅ Build succeeded"
-
