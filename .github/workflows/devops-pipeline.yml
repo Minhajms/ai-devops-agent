@@ -48,9 +48,17 @@ jobs:
         run: |
           python scripts/train_model.py
 
-      - name: Notify Slack
+      - name: Notify Slack (Failure)
         if: failure()
         env:
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
         run: |
-          python scripts/notify_slack.py
+          python scripts/notify_slack.py "❌ Build failed"
+
+      - name: Notify Slack (Success)
+        if: success()
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+        run: |
+          python scripts/notify_slack.py "✅ Build succeeded"
+
