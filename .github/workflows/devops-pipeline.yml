@@ -54,6 +54,10 @@ jobs:
     - name: Train and validate model
       run: |
         python scripts/train_model.py
+
+    - name: Predict Pipeline Risk
+      run: |
+        python scripts/predict_risk.py
         
     - name: Upload test results
       if: always()
