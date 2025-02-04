@@ -5,8 +5,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def fix_dependency_issue():
-    logger.info("Installing dependencies...")
-    subprocess.run(["pip", "install", "-r", "requirements.txt"], check=True)
+    logger.info("Installing missing dependencies...")
+    # Install the missing package (e.g., requests)
+    subprocess.run(["pip", "install", "requests"], check=True)
 
 def retry_build():
     logger.info("Retrying build...")
