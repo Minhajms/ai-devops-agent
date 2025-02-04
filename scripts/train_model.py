@@ -71,21 +71,23 @@ class PipelinePredictor:
             self.model.fit(X_train, y_train)
             
             # Evaluate model
-            cv_scores = cross_val_score(self.model, X, y, cv=5)
-            y_pred = self.model.predict(X_test)
+            # Adjust cross-validation folds based on sample size
+            n_splits = min(5, len(X) // 2)  # Ensure we have enough samples per fold
+            if n_splits > 1:
+                cv_scores = cross_val_score(self.model, X, y, cv=n_splits)
+                logger.info(f"Cross-validation scores: {cv_scores}")
+                logger.info(f"Average CV score: {cv_scores.mean():.3f}")
+            else:
+                # For very small datasets, use train/test split score
+                score = self.model.score(X_test, y_test)
+                logger.info(f"Test set score: {score:.3f}")
             
-            # Log performance metrics
-            logger.info(f"Cross-validation scores: {cv_scores}")
-            logger.info(f"Average CV score: {cv_scores.mean():.3f}")
+            y_pred = self.model.predict(X_test)
             logger.info("\nClassification Report:\n" + 
                        classification_report(y_test, y_pred))
             
             # Save model with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            model_filename = f"pipeline_model_{timestamp}.pkl"
-            model_path = os.path.join(self.model_path, model_filename)
-            joblib.dump(self.model, model_path)
-            logger.info(f"Model saved to {model_path}")
+            self._save_model()
             
             # Save feature importance analysis
             self._save_feature_importance(features)
@@ -94,6 +96,13 @@ class PipelinePredictor:
             logger.error(f"Error in model training: {str(e)}")
             raise
             
+    def _save_model(self):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_filename = f"pipeline_model_{timestamp}.pkl"
+        model_path = os.path.join(self.model_path, model_filename)
+        joblib.dump(self.model, model_path)
+        logger.info(f"Model saved to {model_path}")
+        
     def _save_feature_importance(self, features):
         importance = pd.DataFrame({
             'feature': features,
