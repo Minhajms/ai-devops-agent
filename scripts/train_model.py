@@ -29,21 +29,25 @@ class PipelinePredictor:
     def create_model_directory(self):
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
-            
     def load_and_preprocess_data(self):
-        try:
-            logger.info(f"Loading data from {self.data_path}")
-            data = pd.read_csv(self.data_path)
-            
-            # Add derived features
-            data['hour_of_day'] = pd.to_datetime(data['timestamp']).dt.hour
-            data['day_of_week'] = pd.to_datetime(data['timestamp']).dt.dayofweek
-            data['test_per_second'] = data['test_count'] / data['build_time']
-            
-            return data
-        except Exception as e:
-            logger.error(f"Error loading data: {str(e)}")
-            raise
+    try:
+        logger.info(f"Loading data from {self.data_path}")
+        data = pd.read_csv(self.data_path)
+        
+        # Handle missing timestamp column
+        if 'timestamp' not in data.columns:
+            logger.warning("Timestamp column not found, adding current timestamp")
+            data['timestamp'] = datetime.now().timestamp()
+        
+        # Add derived features
+        data['hour_of_day'] = pd.to_datetime(data['timestamp'], unit='s').dt.hour
+        data['day_of_week'] = pd.to_datetime(data['timestamp'], unit='s').dt.dayofweek
+        data['test_per_second'] = data['test_count'] / data['build_time']
+        
+        return data
+    except Exception as e:
+        logger.error(f"Error loading data: {str(e)}")
+        raise            
             
     def train_model(self):
         try:
