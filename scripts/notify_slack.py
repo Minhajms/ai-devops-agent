@@ -3,7 +3,7 @@ import logging
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-# Set up logging
+# Enhanced logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -19,6 +19,7 @@ class SlackNotifier:
         self.channel = "#devops"
 
     def send_message(self, message: str, blocks: list = None):
+        """Send a message to Slack with optional blocks."""
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -36,6 +37,7 @@ class SlackNotifier:
                     raise
 
     def send_build_status(self, status: str, build_info: dict):
+        """Send formatted build status message."""
         emoji = "✅" if status == "success" else "❌"
         blocks = [
             {

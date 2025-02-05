@@ -1,9 +1,13 @@
 import pandas as pd
 import joblib
 import logging
+import os
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+# Enhanced logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 def load_data(file_path):
@@ -30,23 +34,31 @@ def predict_risk(model, data):
 
 def main():
     # Load the model
-    model_path = 'models/pipeline_model_latest.pkl'  # Adjust the path as necessary
-    try:
-        model = joblib.load(model_path)
-        logger.info("Model loaded successfully.")
-    except Exception as e:
-        logger.error(f"Error loading model: {e}")
-        return
+    model_path = 'models/pipeline_model_latest.pkl'
+    if not os.path.exists(model_path):
+        logger.error(f"Model file not found: {model_path}")
+        logger.info("Attempting to train a new model...")
+        from train_model import PipelinePredictor
+        predictor = PipelinePredictor()
+        predictor.train_model()
+        model = predictor.model
+    else:
+        try:
+            model = joblib.load(model_path)
+            logger.info("Model loaded successfully.")
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+            return
 
     # Load the data
-    data_path = 'data/pipeline_data.csv'  # Adjust the path as necessary
+    data_path = 'data/pipeline_data.csv'
     data = load_data(data_path)
 
     # Predict risk
     risk_predictions = predict_risk(model, data)
     logger.info(f"Risk predictions: {risk_predictions}")
 
-    # Optionally, save predictions to a file
+    # Save predictions to a file
     predictions_df = pd.DataFrame(risk_predictions, columns=['Risk Prediction'])
     predictions_df.to_csv('data/risk_predictions.csv', index=False)
     logger.info("Risk predictions saved to data/risk_predictions.csv")
