@@ -66,3 +66,14 @@ class SlackNotifier:
             }
         ]
         return self.send_message(f"Build {status.capitalize()}", blocks=blocks)
+
+if __name__ == "__main__":
+    import sys
+    status = sys.argv[1]
+    build_info = {
+        "duration": "120",
+        "test_count": "50",
+        "failure_count": "0"
+    }
+    notifier = SlackNotifier()
+    notifier.send_build_status(status, build_info)

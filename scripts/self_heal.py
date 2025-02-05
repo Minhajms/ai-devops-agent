@@ -90,3 +90,9 @@ class PipelineHealer:
         except subprocess.CalledProcessError as e:
             logger.error(f"Build retry failed: {str(e)}")
             return False
+
+if __name__ == "__main__":
+    healer = PipelineHealer()
+    healer.fix_dependencies('requirements.txt')
+    healer.check_and_fix_memory()
+    healer.retry_build()

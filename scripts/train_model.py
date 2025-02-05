@@ -36,17 +36,17 @@ class PipelinePredictor:
         try:
             logger.info(f"Loading data from {self.data_path}")
             data = pd.read_csv(self.data_path)
-            
+
             # Handle missing timestamp column if needed
             if 'timestamp' not in data.columns:
                 logger.warning("Timestamp column not found, adding current timestamp")
                 data['timestamp'] = datetime.now().timestamp()
-            
+
             # Add derived features
             data['hour_of_day'] = pd.to_datetime(data['timestamp'], unit='s').dt.hour
             data['day_of_week'] = pd.to_datetime(data['timestamp'], unit='s').dt.dayofweek
             data['test_per_second'] = data['test_count'] / data['build_time']
-            
+
             return data
         except Exception as e:
             logger.error(f"Error loading data: {str(e)}")
@@ -56,17 +56,17 @@ class PipelinePredictor:
         """Train a predictive model using the pipeline data."""
         try:
             data = self.load_and_preprocess_data()
-            
+
             # Feature selection
             features = ['build_time', 'test_count', 'hour_of_day', 'day_of_week', 'test_per_second']
             X = data[features]
             y = data['failure']
-            
+
             # Split data into training and testing sets
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.2, random_state=42
             )
-            
+
             # Hyperparameter tuning with GridSearchCV
             param_grid = {
                 'n_estimators': [50, 100, 200],
@@ -77,18 +77,18 @@ class PipelinePredictor:
             grid_search.fit(X_train, y_train)
             logger.info(f"Best parameters: {grid_search.best_params_}")
             self.model = grid_search.best_estimator_
-            
+
             # Evaluate model
             score = self.model.score(X_test, y_test)
             logger.info(f"Test set score: {score:.3f}")
-            
+
             # Generate classification report
             y_pred = self.model.predict(X_test)
             logger.info("\nClassification Report:\n" + classification_report(y_test, y_pred))
-            
+
             # Save model with timestamp
             self._save_model()
-            
+
             # Save feature importance analysis
             self._save_feature_importance(features)
         except Exception as e:

@@ -20,17 +20,17 @@ def sample_data():
 
 def test_model_training(sample_data):
     from train_model import PipelinePredictor
-    
+
     with patch('pandas.read_csv') as mock_read_csv:
         mock_read_csv.return_value = sample_data
         predictor = PipelinePredictor()
         predictor.train_model()
-        
+
         assert predictor.model is not None
         assert hasattr(predictor.model, 'predict')
-        
+
         # Test prediction functionality
-        X_test = sample_data[['build_time', 'test_count', 'hour_of_day', 
+        X_test = sample_data[['build_time', 'test_count', 'hour_of_day',
                             'day_of_week', 'test_per_second']].iloc[:1]
         prediction = predictor.model.predict(X_test)
         assert prediction in [0, 1]
