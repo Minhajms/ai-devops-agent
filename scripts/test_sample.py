@@ -34,3 +34,14 @@ def test_model_training(sample_data):
                             'day_of_week', 'test_per_second']].iloc[:1]
         prediction = predictor.model.predict(X_test)
         assert prediction in [0, 1]
+
+def test_predict_risk(sample_data):
+    from predict_risk import predict_risk
+    from train_model import PipelinePredictor
+
+    predictor = PipelinePredictor()
+    predictor.train_model()
+    model = predictor.model
+
+    risk_predictions = predict_risk(model, sample_data)
+    assert len(risk_predictions) == len(sample_data)

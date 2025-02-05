@@ -67,13 +67,17 @@ class SlackNotifier:
         ]
         return self.send_message(f"Build {status.capitalize()}", blocks=blocks)
 
+    def handle_chatops(self, command: str):
+        """Handle ChatOps commands."""
+        if command.startswith("status"):
+            self.send_build_status("success", {"duration": "120", "test_count": "50", "failure_count": "0"})
+        elif command.startswith("help"):
+            self.send_message("Available commands: status, help")
+        else:
+            self.send_message("Unknown command. Use 'help' to see available commands.")
+
 if __name__ == "__main__":
     import sys
-    status = sys.argv[1]
-    build_info = {
-        "duration": "120",
-        "test_count": "50",
-        "failure_count": "0"
-    }
+    command = sys.argv[1]
     notifier = SlackNotifier()
-    notifier.send_build_status(status, build_info)
+    notifier.handle_chatops(command)
