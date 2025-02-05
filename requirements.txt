@@ -8,4 +8,7 @@ pandas
 joblib
 psutil
 numpy
-
+flask
+matplotlib
+seaborn
+pytest-mock

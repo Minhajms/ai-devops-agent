@@ -1,17 +1,6 @@
-import pandas as pd
-from unittest.mock import patch
-
-# Mock data with 'timestamp' column
-sample_data = pd.DataFrame({
-    'timestamp': [1234567890, 1234567900, 1234567910],  # Add the 'timestamp' column
-    'build_time': [120, 80, 150],
-    'test_count': [50, 30, 60],
-    'failure': [0, 1, 0]
-})
-
-def test_model_training():
-    with patch('pandas.read_csv') as mock_read_csv:
-        mock_read_csv.return_value = sample_data  # Return the mock data
-        predictor = PipelinePredictor()  # Assuming your class is set up to handle the data
-        predictor.train_model()  # Now your test code should work as expected
-
+timestamp,build_time,test_count,failure,hour_of_day,day_of_week,test_per_second
+1234567890,120,50,0,14,2,0.416667
+1234567900,80,30,1,15,2,0.375000
+1234567910,150,60,0,16,2,0.400000
+1234567920,90,40,1,17,2,0.444444
+1234567930,110,55,0,18,2,0.500000

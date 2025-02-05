@@ -18,8 +18,13 @@ def load_data(file_path):
 
 def predict_risk(model, data):
     """Predict the risk based on the model and input data."""
-    # Assuming the model expects certain features
-    features = data[['build_time', 'test_count', 'hour_of_day', 'day_of_week', 'test_per_second']]
+    required_features = ['build_time', 'test_count', 'hour_of_day', 'day_of_week', 'test_per_second']
+    missing_features = [feat for feat in required_features if feat not in data.columns]
+    if missing_features:
+        logger.error(f"Missing required features: {missing_features}")
+        raise ValueError(f"Input data is missing required features: {missing_features}")
+
+    features = data[required_features]
     predictions = model.predict(features)
     return predictions
 
