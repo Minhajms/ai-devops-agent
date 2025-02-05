@@ -8,7 +8,7 @@ pytest-xdist==3.6.1
 bandit==1.8.2
 safety==3.2.14
 imbalanced-learn==0.12.2
-requests==2.31.0
+requests==2.32.3
 python-dotenv==1.0.1
 psutil==6.1.1
 matplotlib==3.9.4
