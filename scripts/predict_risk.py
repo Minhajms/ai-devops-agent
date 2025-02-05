@@ -3,8 +3,7 @@ import joblib
 import logging
 import os
 import glob
-import openai
-import requests 
+import requests  # Import requests for making API calls
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,14 +11,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-import requests  # Add this import for making API calls
-
 class RiskPredictor:
     def __init__(self):
         self.model = self.load_latest_model()
         self.data_path = 'data/pipeline_data.csv'
         self.qwen_api_url = os.getenv("QWEN_API_URL")  # Set your Qwen API URL in environment variables
         self.qwen_api_key = os.getenv("QWEN_API_KEY")  # Set your Qwen API key in environment variables
+
+    def load_latest_model(self):
+        """Load the latest trained model from the models directory."""
+        try:
+            model_files = glob.glob('models/pipeline_model_*.pkl')
+            if not model_files:
+                raise FileNotFoundError("No trained models found")
+                
+            latest_model = sorted(model_files)[-1]
+            logger.info(f"Loading model: {latest_model}")
+            return joblib.load(latest_model)
+        except Exception as e:
+            logger.error(f"Model loading failed: {str(e)}")
+            raise
 
     def get_ai_suggestion(self, failure_type):
         """Get AI-powered remediation suggestion from Qwen AI"""
@@ -32,12 +43,14 @@ class RiskPredictor:
                 "prompt": f"Suggest specific technical solutions for: {failure_type}",
                 "max_tokens": 150
             }
-            response = requests.post(self.qwen_api_url, headers=headers, json=payload)
+            # Added timeout parameter to fix B113
+            response = requests.post(self.qwen_api_url, headers=headers, json=payload, timeout=30)  # Added timeout
             response.raise_for_status()  # Raise an error for bad responses
             return response.json().get("choices")[0].get("text").strip()
         except Exception as e:
             logger.error(f"Qwen AI suggestion failed: {str(e)}")
             return "AI suggestion unavailable"
+
     def predict_risks(self):
         try:
             data = pd.read_csv(self.data_path)
