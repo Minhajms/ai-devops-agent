@@ -72,4 +72,4 @@ jobs:
       env:
         SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       run: |
-        python scripts/notify_slack.py "$(if [ ${{ job.status }} == 'success' ]; then echo '✅ Build succeeded'; else echo '❌ Build failed'; fi)"
+        python scripts/notify_slack.py "$(if [ '${{ job.status }}' == 'success' ]; then echo '✅ Build succeeded'; else echo '❌ Build failed'; fi)"
