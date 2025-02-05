@@ -10,43 +10,53 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      matrix:
-        python-version: ['3.9']
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        persist-credentials: false
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.9'
         cache: 'pip'
         cache-dependency-path: 'requirements.txt'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest-xdist coverage
+        pip install -r requirements.txt pytest-xdist
 
     - name: Run security checks
       run: |
-        bandit -r . -ll
-        safety scan --output json > safety-report.json
+        bandit -r . -ll -f json -o bandit-report.json
+        safety check --output json safety-report.json
 
-    - name: Run tests with coverage
+    - name: Run tests
       run: |
-        pytest -n auto --cov=scripts --cov-report=xml --junitxml=test-results.xml
+        pytest -n auto --junitxml=test-results.xml --cov=scripts --cov-report=xml | tee build_log.txt
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-artifacts
+        path: |
+          test-results.xml
+          build_log.txt
+          .coverage
+          coverage.xml
+          bandit-report.json
+          safety-report.json
+          models/
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
+        files: coverage.xml
+        fail_ci_if_error: false
 
     - name: Train and validate model
       run: python scripts/train_model.py
@@ -56,22 +66,11 @@ jobs:
     - name: Predict Pipeline Risk
       run: python scripts/predict_risk.py
       env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: pipeline-artifacts
-        path: |
-          test-results.xml
-          coverage.xml
-          safety-report.json
-          models/
-          data/risk_predictions.csv
+        QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
 
     - name: Notify Slack
       env:
         SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-        CI_STATUS: "${{ job.status }}"
+        GITHUB_ARTIFACT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
-        python scripts/notify_slack.py "$CI_STATUS"
+        python scripts/notify_slack.py "${{ job.status }}"
