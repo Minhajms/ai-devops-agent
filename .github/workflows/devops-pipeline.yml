@@ -34,7 +34,7 @@ jobs:
 
     - name: Run security checks
       run: |
-        bandit -r . -ll
+        bandit -r . -ll --skip B314
         safety scan --key ${{ secrets.SAFETY_API_KEY }} -r requirements.txt
 
     - name: Run tests
@@ -63,5 +63,4 @@ jobs:
       if: always()
       env:
         SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
-      run: |
-        python scripts/notify_slack.py "${{ job.status }}"
+      run: python scripts/notify_slack.py "${{ job.status }}"

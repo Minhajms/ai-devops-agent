@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as safe_ET
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import pandas as pd
@@ -22,19 +22,40 @@ class SlackManager:
         self.client = WebClient(token=self.token)
         self.channel = "#devops-alerts"
         self.max_retries = 3
-        self._validate_channel()
 
-    def _validate_channel(self):
-        """Verify channel exists before sending messages"""
+    def send_notification(self, status: str, data: Optional[Dict[str, Any]] = None) -> bool:
         try:
-            response = self.client.conversations_list()
-            channels = response.get('channels', [])
-            if not any(ch['name'] == self.channel.lstrip('#') for ch in channels):
-                logger.error(f"Channel {self.channel} not found in workspace")
-                raise ValueError(f"Invalid channel: {self.channel}")
+            blocks = self._create_message_blocks(status, data)
+            
+            # Add risk prediction if available
+            try:
+                if os.path.exists('data/risk_predictions.csv'):
+                    risk_data = pd.read_csv('data/risk_predictions.csv')
+                    latest_risk = risk_data.iloc[-1]
+                    if latest_risk['failure_probability'] > 0.5:
+                        blocks.append({
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"*⚠️ High Risk Alert*\nFailure Probability: {latest_risk['failure_probability']:.1%}\nSuggested Action: {latest_risk['ai_suggestion']}"
+                            }
+                        })
+            except Exception as e:
+                logger.warning(f"Risk prediction inclusion failed: {str(e)}")
+            
+            # Attempt to send message directly without channel validation
+            response = self.client.chat_postMessage(
+                channel=self.channel,
+                blocks=blocks,
+                text=f"Pipeline {status}"  # Fallback text
+            )
+            
+            logger.info(f"Notification sent successfully: {status}")
+            return True
+            
         except SlackApiError as e:
-            logger.error(f"Channel validation failed: {str(e)}")
-            raise
+            logger.error(f"Slack API error: {str(e)}")
+            return False
 
     def _create_message_blocks(self, status: str, data: Optional[Dict[str, Any]] = None) -> list:
         status = status.lower()
@@ -65,48 +86,15 @@ class SlackManager:
             
         return base_blocks
 
-    def send_notification(self, status: str, data: Optional[Dict[str, Any]] = None) -> bool:
-        try:
-            blocks = self._create_message_blocks(status, data)
-            
-            # Add risk prediction if available
-            try:
-                if os.path.exists('data/risk_predictions.csv'):
-                    risk_data = pd.read_csv('data/risk_predictions.csv')
-                    latest_risk = risk_data.iloc[-1]
-                    if latest_risk['failure_probability'] > 0.5:
-                        blocks.append({
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"*⚠️ High Risk Alert*\nFailure Probability: {latest_risk['failure_probability']:.1%}\nSuggested Action: {latest_risk['ai_suggestion']}"
-                            }
-                        })
-            except Exception as e:
-                logger.warning(f"Risk prediction inclusion failed: {str(e)}")
-            
-            response = self.client.chat_postMessage(
-                channel=self.channel,
-                blocks=blocks,
-                text=f"Pipeline {status}"  # Fallback text
-            )
-            
-            logger.info(f"Notification sent successfully: {status}")
-            return True
-            
-        except SlackApiError as e:
-            logger.error(f"Slack API error: {str(e)}")
-            return False
-
 def main():
     try:
         status = sys.argv[1] if len(sys.argv) > 1 else "unknown"
         
-        # Parse actual test results
+        # Parse actual test results using secure XML parsing
         data = {}
         try:
             if os.path.exists('test-results.xml'):
-                tree = ET.parse('test-results.xml')
+                tree = safe_ET.parse('test-results.xml')
                 root = tree.getroot()
                 data = {
                     'tests': root.attrib.get('tests', 0),
