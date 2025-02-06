@@ -14,6 +14,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -29,26 +35,20 @@ jobs:
     - name: Run security checks
       run: |
         bandit -r . -ll
-        # Use Safety DB API key for non-interactive scanning
-        pip install safety
-        safety check --key ${{ secrets.SAFETY_API_KEY }} --full-report
+        safety scan --key ${{ secrets.SAFETY_API_KEY }} -r requirements.txt
 
     - name: Run tests
       run: |
         pytest -n auto --junitxml=test-results.xml --cov=scripts --cov-report=xml
 
-    - name: Upload test results
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
-        path: test-results.xml
-        if-no-files-found: error
-
-    - name: Upload coverage
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage.xml
+        name: build-artifacts
+        path: |
+          test-results.xml
+          coverage.xml
+          data/risk_predictions.csv
         if-no-files-found: error
 
     - name: Train model
@@ -60,7 +60,7 @@ jobs:
         QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
 
     - name: Notify Slack
-      if: always()  # Run even if previous steps fail
+      if: always()
       env:
         SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       run: |
