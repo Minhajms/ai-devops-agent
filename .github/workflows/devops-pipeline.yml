@@ -34,10 +34,12 @@ jobs:
         pip install -r requirements.txt
         
     - name: Run security checks
+      env:
+        SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
       run: |
         bandit -r . -ll --exclude ./venv,./tests
         # Using safety scan for security checks
-        safety scan -r requirements.txt
+        safety scan -r requirements.txt --key $SAFETY_API_KEY
 
     - name: Run tests
       run: |

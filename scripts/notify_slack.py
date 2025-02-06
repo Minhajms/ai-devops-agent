@@ -57,7 +57,9 @@ class SlackManager:
     def send_notification(self, status: str, data: Optional[Dict[str, Any]] = None) -> bool:
         try:
             # Ensure channel exists before sending
-            self._ensure_channel_exists()
+            if not self._ensure_channel_exists():
+                logger.error("Failed to set up Slack channel")
+                return False
             
             blocks = self._create_message_blocks(status, data)
             
@@ -89,6 +91,9 @@ class SlackManager:
                     logger.info(f"Notification sent successfully: {status}")
                     return True
                 except SlackApiError as e:
+                    if e.response['error'] == 'channel_not_found':
+                        logger.error(f"Channel not found: {self.channel}")
+                        break
                     if attempt == self.max_retries - 1:
                         raise e
                     logger.warning(f"Retry {attempt + 1}/{self.max_retries} failed: {str(e)}")
