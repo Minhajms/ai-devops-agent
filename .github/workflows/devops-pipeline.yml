@@ -29,20 +29,27 @@ jobs:
     - name: Run security checks
       run: |
         bandit -r . -ll
-        safety scan  # Updated from deprecated 'check'
+        # Use Safety DB API key for non-interactive scanning
+        pip install safety
+        safety check --key ${{ secrets.SAFETY_API_KEY }} --full-report
 
     - name: Run tests
       run: |
         pytest -n auto --junitxml=test-results.xml --cov=scripts --cov-report=xml
 
-    - name: Upload artifacts
+    - name: Upload test results
       uses: actions/upload-artifact@v4
       with:
-        name: pipeline-artifacts
-        path: |
-          test-results.xml
-          coverage.xml
-          models/
+        name: test-results
+        path: test-results.xml
+        if-no-files-found: error
+
+    - name: Upload coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.xml
+        if-no-files-found: error
 
     - name: Train model
       run: python scripts/train_model.py
@@ -53,6 +60,7 @@ jobs:
         QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
 
     - name: Notify Slack
+      if: always()  # Run even if previous steps fail
       env:
         SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
       run: |
