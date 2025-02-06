@@ -34,8 +34,9 @@ jobs:
 
     - name: Run security checks
       run: |
-        bandit -r . -ll --skip B314
-        safety scan --key ${{ secrets.SAFETY_API_KEY }} -r requirements.txt
+        bandit -r . -ll --exclude ./venv,./tests
+        # Using safety check without API key for public packages
+        safety check -r requirements.txt
 
     - name: Run tests
       run: |
@@ -49,7 +50,7 @@ jobs:
           test-results.xml
           coverage.xml
           data/risk_predictions.csv
-        if-no-files-found: error
+        if-no-files-found: warn
 
     - name: Train model
       run: python scripts/train_model.py

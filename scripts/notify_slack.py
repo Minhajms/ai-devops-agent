@@ -23,35 +23,72 @@ class SlackManager:
         self.channel = "#devops-alerts"
         self.max_retries = 3
 
+    def _ensure_channel_exists(self):
+        """Create channel if it doesn't exist"""
+        try:
+            # Try to find the channel
+            channel_name = self.channel.lstrip('#')
+            
+            try:
+                # First try to join the channel
+                self.client.conversations_join(channel=self.channel)
+                return True
+            except SlackApiError as e:
+                if e.response['error'] == 'channel_not_found':
+                    # Create the channel if it doesn't exist
+                    self.client.conversations_create(
+                        name=channel_name,
+                        is_private=False
+                    )
+                    return True
+                else:
+                    raise e
+                    
+        except SlackApiError as e:
+            logger.error(f"Channel setup failed: {str(e)}")
+            # Fall back to general channel
+            self.channel = "#general"
+            return False
+
     def send_notification(self, status: str, data: Optional[Dict[str, Any]] = None) -> bool:
         try:
+            # Ensure channel exists before sending
+            self._ensure_channel_exists()
+            
             blocks = self._create_message_blocks(status, data)
             
             # Add risk prediction if available
             try:
                 if os.path.exists('data/risk_predictions.csv'):
                     risk_data = pd.read_csv('data/risk_predictions.csv')
-                    latest_risk = risk_data.iloc[-1]
-                    if latest_risk['failure_probability'] > 0.5:
-                        blocks.append({
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"*⚠️ High Risk Alert*\nFailure Probability: {latest_risk['failure_probability']:.1%}\nSuggested Action: {latest_risk['ai_suggestion']}"
-                            }
-                        })
+                    if not risk_data.empty:
+                        latest_risk = risk_data.iloc[-1]
+                        if latest_risk['failure_probability'] > 0.5:
+                            blocks.append({
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": f"*⚠️ High Risk Alert*\nFailure Probability: {latest_risk['failure_probability']:.1%}\nSuggested Action: {latest_risk['ai_suggestion']}"
+                                }
+                            })
             except Exception as e:
                 logger.warning(f"Risk prediction inclusion failed: {str(e)}")
             
-            # Attempt to send message directly without channel validation
-            response = self.client.chat_postMessage(
-                channel=self.channel,
-                blocks=blocks,
-                text=f"Pipeline {status}"  # Fallback text
-            )
-            
-            logger.info(f"Notification sent successfully: {status}")
-            return True
+            # Send message with retries
+            for attempt in range(self.max_retries):
+                try:
+                    response = self.client.chat_postMessage(
+                        channel=self.channel,
+                        blocks=blocks,
+                        text=f"Pipeline {status}"  # Fallback text
+                    )
+                    logger.info(f"Notification sent successfully: {status}")
+                    return True
+                except SlackApiError as e:
+                    if attempt == self.max_retries - 1:
+                        raise e
+                    logger.warning(f"Retry {attempt + 1}/{self.max_retries} failed: {str(e)}")
+                    time.sleep(2 ** attempt)
             
         except SlackApiError as e:
             logger.error(f"Slack API error: {str(e)}")
