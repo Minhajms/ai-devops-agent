@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import time
 from defusedxml import ElementTree as safe_ET
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -34,7 +35,10 @@ class SlackManager:
                 self.client.conversations_join(channel=self.channel)
                 return True
             except SlackApiError as e:
-                if e.response['error'] == 'channel_not_found':
+                if e.response['error'] == 'name_taken':
+                    logger.info(f"Channel {self.channel} already exists.")
+                    return True
+                elif e.response['error'] == 'channel_not_found':
                     # Create the channel if it doesn't exist
                     self.client.conversations_create(
                         name=channel_name,

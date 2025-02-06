@@ -36,8 +36,8 @@ jobs:
     - name: Run security checks
       run: |
         bandit -r . -ll --exclude ./venv,./tests
-        # Using safety check without API key for public packages
-        safety check -r requirements.txt
+        # Using safety scan for security checks
+        safety scan -r requirements.txt
 
     - name: Run tests
       run: |
